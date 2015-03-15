@@ -12,6 +12,8 @@ Loading the data and storing for future use.
 ```{r,echo=FALSE}
 library(dplyr)
 library(lubridate)
+library(ggplot2)
+library(car)
 setwd("C://Personal//Coursera//Assignment//RepData_PeerAssessment1")
 impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
 
@@ -72,16 +74,18 @@ Do these values differ from the estimates from the first part of the assignment?
 numNAStepEntries <- nrow(activity_record[is.na(activity_record$steps),])
 replicaActivityRecord <- activity_record
 replacedNA <- merge(replicaActivityRecord,mean_interval)
-replacedNA$steps[is.na(replacedNA$steps)] <- replacedNA$averageStepsForInterval[is.na(replacedNA$steps)]
+replicaActivityRecord$steps[is.na(replicaActivityRecord$steps)] <- replacedNA$averageStepsForInterval[is.na(replacedNA$steps)]
 
 
-new_sum_daily_activity <- replacedNA%>% group_by(date) %>% summarise(sum(steps,na.rm=TRUE),mean(steps))
+new_sum_daily_activity <- replicaActivityRecord%>% group_by(date) %>% summarise(sum(steps,na.rm=TRUE))
 names(new_sum_daily_activity)[2] <- "sumStepsPerDay"
-names(new_sum_daily_activity)[3] <- "meanStepsPerDay"
-hist(sum_daily_activity$sumStepsPerDay,xlab="Steps per day",breaks=50,col=rgb(0,1,0,0),border="darkblue",main="",ylim=NULL,xlim=range(sum_daily_activity$sumStepsPerDay))
-hist(new_sum_daily_activity$sumStepsPerDay,add=T,col=rgb(1,0,1,0))
 
-newMeanStepsDailyActivity <- round(mean(new_sum_daily_activity$sumStepsPerDay),1)
+new_sum_daily_activity <- mutate(new_sum_daily_activity,imputeNAtoMean=TRUE)
+sum_daily_activity <- mutate(sum_daily_activity,imputeNAtoMean=FALSE)
+oldandnew <- rbind(new_sum_daily_activity,sum_daily_activity)
+ggplot(oldandnew, aes(sumStepsPerDay, fill = imputeNAtoMean,colour="red",alpha=.8)) + geom_histogram(alpha = 0.5, aes(y = ..density..,colour="lightblue"))
+
+newMeanStepsDailyActivity <- round(mean(new_sum_daily_activity$sumStepsPerDay,na.rm=TRUE),1)
 newMedianStepsDailyActivity <- round(median(new_sum_daily_activity$sumStepsPerDay),1)
 
 ```
@@ -90,21 +94,21 @@ Total number of missing values in the dataset is,`r numNAStepEntries`
 
 After replacing the NA values with interval mean we get , Mean of the total number of steps taken per day is `r newMeanStepsDailyActivity`, Median of the total number of steps taken per day is , `r newMedianStepsDailyActivity`
 
-Values before replacing Mean of the total number of steps taken per day is `r round(mean(sum_daily_activity$sumStepsPerDay),2)`, Median of the total number of steps taken per day is , `r round(median(sum_daily_activity$sumStepsPerDay),2)`
+Values before replacing Mean of the total number of steps taken per day is `r round(mean(sum_daily_activity$sumStepsPerDay),2)`, Median of the total number of steps taken per day is , `r round(median(sum_daily_activity$sumStepsPerDay),1)`
 
 The variations in the histogram is smoothened by replacing the NA values. The mean and median have shifted.
 
 # Are there differences in activity patterns between weekdays and weekends?
 
 For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
-
 Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
-
-Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
-
-
 ```{r}
-tm_activity_record <- replacedNA %>% mutate(weekday=wday(as.POSIXlt(activity_record$date),label=FALSE,abbr = TRUE))
+tm_activity_record <- replacedNA %>% mutate(weekday=wday(as.POSIXlt(date),label=FALSE,abbr = TRUE))%>% arrange(date)
+tm_activity_record$weekday <- recode(tm_activity_record$weekday,"2:6='weekday';c(1,7)='weekend'")
+tm_activity_record <- tm_activity_record %>% group_by(weekday,interval) %>% summarise(mean(steps,na.rm=TRUE))
+names(tm_activity_record)[3] <-"avgStepPerInterval"
+g <- ggplot(tm_activity_record,aes(x=tm_activity_record$interval,y=tm_activity_record$avgStepPerInterval))
+g+ geom_line(aes(colour=tm_activity_record$steps)) + facet_grid(weekday~.) + labs(x=expression("Intervals"), y= expression("Average Steps")) + theme_grey() + labs(title ="Steps per Interval trend across weekday and weekend")
 
 
 ```
