@@ -26,6 +26,14 @@ Loading the data and storing for future use.
 ## Warning: package 'lubridate' was built under R version 3.1.2
 ```
 
+```
+## Warning: package 'ggplot2' was built under R version 3.1.2
+```
+
+```
+## Warning: package 'car' was built under R version 3.1.3
+```
+
 ```r
 activity_record <- read.csv("activity.csv",header=TRUE)
 activity_record <- tbl_df(activity_record) 
@@ -76,12 +84,9 @@ id = mean_interval[which(mean_interval$averageStepsForInterval== max(mean_interv
 
 # Imputing missing values
 
-Find the total number of values were steps are not recorded. We will replace the non recorded values with mean for the day. 
-
-Create a new dataset that is equal to the original dataset but with the missing data filled in.
-
+Find the total number of values were steps are not recorded. We will replace the non recorded values with mean for the interval across all days. 
+New dataset is created with replaced and old average of sums per day to compare the trend . 
 A histogram is plotted with both the total number of steps,mean and median of steps taken each day before and after removing NA values . 
-Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
 
 
 
@@ -89,40 +94,52 @@ Do these values differ from the estimates from the first part of the assignment?
 numNAStepEntries <- nrow(activity_record[is.na(activity_record$steps),])
 replicaActivityRecord <- activity_record
 replacedNA <- merge(replicaActivityRecord,mean_interval)
-replacedNA$steps[is.na(replacedNA$steps)] <- replacedNA$averageStepsForInterval[is.na(replacedNA$steps)]
+replicaActivityRecord$steps[is.na(replicaActivityRecord$steps)] <- replacedNA$averageStepsForInterval[is.na(replacedNA$steps)]
 
 
-new_sum_daily_activity <- replacedNA%>% group_by(date) %>% summarise(sum(steps,na.rm=TRUE),mean(steps))
+new_sum_daily_activity <- replicaActivityRecord%>% group_by(date) %>% summarise(sum(steps,na.rm=TRUE))
 names(new_sum_daily_activity)[2] <- "sumStepsPerDay"
-names(new_sum_daily_activity)[3] <- "meanStepsPerDay"
-hist(sum_daily_activity$sumStepsPerDay,xlab="Steps per day",breaks=50,col=rgb(0,1,0,0),border="darkblue",main="",ylim=NULL,xlim=range(sum_daily_activity$sumStepsPerDay))
-hist(new_sum_daily_activity$sumStepsPerDay,add=T,col=rgb(1,0,1,0))
+
+new_sum_daily_activity <- mutate(new_sum_daily_activity,imputeNAtoMean=TRUE)
+sum_daily_activity <- mutate(sum_daily_activity,imputeNAtoMean=FALSE)
+oldandnew <- rbind(new_sum_daily_activity,sum_daily_activity)
+ggplot(oldandnew, aes(sumStepsPerDay, fill = imputeNAtoMean,colour="red",alpha=.8)) + geom_histogram(alpha = 0.5, aes(y = ..density..,colour="lightblue"))
+```
+
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
 
 ```r
-newMeanStepsDailyActivity <- round(mean(new_sum_daily_activity$sumStepsPerDay),1)
+newMeanStepsDailyActivity <- round(mean(new_sum_daily_activity$sumStepsPerDay,na.rm=TRUE),1)
 newMedianStepsDailyActivity <- round(median(new_sum_daily_activity$sumStepsPerDay),1)
 ```
 #Solution
 Total number of missing values in the dataset is,2304
 
-After replacing the NA values with interval mean we get , Mean of the total number of steps taken per day is 1.07662\times 10^{4}, Median of the total number of steps taken per day is , 1.07662\times 10^{4}
+After replacing the NA values with interval mean we get , Mean of the total number of steps taken per day is 1.07662\times 10^{4}, Median of the total number of steps taken per day is , 1.1015\times 10^{4}
 
 Values before replacing Mean of the total number of steps taken per day is 9354.23, Median of the total number of steps taken per day is , 1.0395\times 10^{4}
 
-The variations in the histogram is smoothened by replacing the NA values. The mean and median have shifted.
-## Are there differences in activity patterns between weekdays and weekends?
+The variations in the histogram is smoothened by replacing the NA values. The mean and median have shifted. The concentration is more to the center
 
-For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+# Are there differences in activity patterns between weekdays and weekends?
 
-Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
-
-Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
-
-
+Weekday for teh given data is added as a column.
+ggplot is plotted to find the patter for weekday and weekend. 
 
 ```r
-tm_activity_record <- replacedNA %>% mutate(weekday=wday(as.POSIXlt(activity_record$date),label=FALSE,abbr = TRUE))
+tm_activity_record <- replacedNA %>% mutate(weekday=wday(as.POSIXlt(date),label=FALSE,abbr = TRUE))%>% arrange(date)
+tm_activity_record$weekday <- recode(tm_activity_record$weekday,"2:6='weekday';c(1,7)='weekend'")
+tm_activity_record <- tm_activity_record %>% group_by(weekday,interval) %>% summarise(mean(steps,na.rm=TRUE))
+names(tm_activity_record)[3] <-"avgStepPerInterval"
+g <- ggplot(tm_activity_record,aes(x=tm_activity_record$interval,y=tm_activity_record$avgStepPerInterval))
+g+ geom_line(aes(colour=tm_activity_record$steps)) + facet_grid(weekday~.) + labs(x=expression("Intervals"), y= expression("Average Steps")) + theme_grey() + labs(title ="Steps per Interval trend across weekday and weekend")
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
+#Solution
+In weekdays we see stroinger peaks, in weekend we see levelled activity across interval

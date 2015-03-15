@@ -62,12 +62,9 @@ id = mean_interval[which(mean_interval$averageStepsForInterval== max(mean_interv
 
 # Imputing missing values
 
-Find the total number of values were steps are not recorded. We will replace the non recorded values with mean for the day. 
-
-Create a new dataset that is equal to the original dataset but with the missing data filled in.
-
+Find the total number of values were steps are not recorded. We will replace the non recorded values with mean for the interval across all days. 
+New dataset is created with replaced and old average of sums per day to compare the trend . 
 A histogram is plotted with both the total number of steps,mean and median of steps taken each day before and after removing NA values . 
-Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
 
 
 ```{r}
@@ -96,12 +93,12 @@ After replacing the NA values with interval mean we get , Mean of the total numb
 
 Values before replacing Mean of the total number of steps taken per day is `r round(mean(sum_daily_activity$sumStepsPerDay),2)`, Median of the total number of steps taken per day is , `r round(median(sum_daily_activity$sumStepsPerDay),1)`
 
-The variations in the histogram is smoothened by replacing the NA values. The mean and median have shifted.
+The variations in the histogram is smoothened by replacing the NA values. The mean and median have shifted. The concentration is more to the center
 
 # Are there differences in activity patterns between weekdays and weekends?
 
-For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
-Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+Weekday for teh given data is added as a column.
+ggplot is plotted to find the patter for weekday and weekend. 
 ```{r}
 tm_activity_record <- replacedNA %>% mutate(weekday=wday(as.POSIXlt(date),label=FALSE,abbr = TRUE))%>% arrange(date)
 tm_activity_record$weekday <- recode(tm_activity_record$weekday,"2:6='weekday';c(1,7)='weekend'")
@@ -110,5 +107,7 @@ names(tm_activity_record)[3] <-"avgStepPerInterval"
 g <- ggplot(tm_activity_record,aes(x=tm_activity_record$interval,y=tm_activity_record$avgStepPerInterval))
 g+ geom_line(aes(colour=tm_activity_record$steps)) + facet_grid(weekday~.) + labs(x=expression("Intervals"), y= expression("Average Steps")) + theme_grey() + labs(title ="Steps per Interval trend across weekday and weekend")
 
-
 ```
+
+#Solution
+In weekdays we see stroinger peaks, in weekend we see levelled activity across interval
